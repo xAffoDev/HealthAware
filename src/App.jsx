@@ -10,10 +10,12 @@ import Tips from "./pages/Tips";
 import Quiz from "./pages/Quiz";
 import Resources from "./pages/Resources";
 import CampaignDetails from "./pages/CampaignDetails";
+import ScrollToTop from "./components/ScrollToTop";
 
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
