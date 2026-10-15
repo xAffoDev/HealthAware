@@ -6,112 +6,178 @@ import {
   ArrowRight,
   CheckCircle2,
   RotateCcw,
+  Trophy,
   XCircle,
+  Sparkles,
+  BookOpen,
 } from "lucide-react";
 import { quizQuestions } from "../data/quizQuestions";
 
-function Quiz() {
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState({});
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [quizFinished, setQuizFinished] = useState(false);
+const QUESTIONS_PER_QUIZ = 10;
 
-  const question = quizQuestions[currentQuestion];
-  const selectedAnswer = selectedAnswers[question.id];
-  const isCorrect = selectedAnswer === question.answer;
-  const score = quizQuestions.filter(
-    (item) => selectedAnswers[item.id] === item.answer
-  ).length;
+function shuffleArray(items) {
+  const shuffled = [...items];
+
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return shuffled;
+}
+
+function createQuiz() {
+  const selectedQuestions = shuffleArray(quizQuestions).slice(
+    0,
+    Math.min(QUESTIONS_PER_QUIZ, quizQuestions.length)
+  );
+
+  return selectedQuestions.map((question) => ({
+    ...question,
+    options: shuffleArray(question.options),
+  }));
+}
+
+function Quiz() {
+  const [questions, setQuestions] = useState(() => createQuiz());
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedOption, setSelectedOption] = useState(null);
+  const [answered, setAnswered] = useState(false);
+  const [score, setScore] = useState(0);
+  const [finished, setFinished] = useState(false);
+
+  const currentQuestion = questions[currentIndex];
+  const totalQuestions = questions.length;
+  const progress = totalQuestions
+    ? ((currentIndex + (answered ? 1 : 0)) / totalQuestions) * 100
+    : 0;
 
   function handleAnswer(option) {
-    if (showFeedback) return;
+    if (answered) return;
 
-    setSelectedAnswers((previous) => ({
-      ...previous,
-      [question.id]: option,
-    }));
-    setShowFeedback(true);
+    setSelectedOption(option);
+    setAnswered(true);
+
+    if (option === currentQuestion.answer) {
+      setScore((previousScore) => previousScore + 1);
+    }
   }
 
   function handleNext() {
-    if (currentQuestion < quizQuestions.length - 1) {
-      setCurrentQuestion((previous) => previous + 1);
-      setShowFeedback(false);
-    } else {
-      setQuizFinished(true);
+    if (!answered) return;
+
+    if (currentIndex === totalQuestions - 1) {
+      setFinished(true);
+      return;
     }
+
+    setCurrentIndex((previousIndex) => previousIndex + 1);
+    setSelectedOption(null);
+    setAnswered(false);
   }
 
   function restartQuiz() {
-    setCurrentQuestion(0);
-    setSelectedAnswers({});
-    setShowFeedback(false);
-    setQuizFinished(false);
+    setQuestions(createQuiz());
+    setCurrentIndex(0);
+    setSelectedOption(null);
+    setAnswered(false);
+    setScore(0);
+    setFinished(false);
   }
 
-  if (quizFinished) {
-    const percentage = Math.round(
-      (score / quizQuestions.length) * 100
-    );
-
-    let resultMessage = "Keep learning and building your awareness.";
-
-    if (percentage >= 80) {
-      resultMessage = "Excellent work! You have a strong understanding of these topics.";
-    } else if (percentage >= 50) {
-      resultMessage = "Good effort! Review the explanations to strengthen your knowledge.";
-    }
-
+  if (!totalQuestions) {
     return (
       <section className="quiz-page">
         <div className="quiz-container">
-          <div className="quiz-result-card">
-            <div className="quiz-result-icon">
-              <CheckCircle2 size={38} />
-            </div>
-
-            <span className="section-eyebrow">Quiz Completed</span>
-            <h1>Your health awareness result</h1>
-
-            <div className="quiz-score">
-              <strong>{score}</strong>
-              <span>out of {quizQuestions.length}</span>
-            </div>
-
-            <div className="quiz-result-progress">
-              <div style={{ width: `${percentage}%` }} />
-            </div>
-
-            <p className="quiz-percentage">{percentage}% score</p>
-            <p className="quiz-result-message">{resultMessage}</p>
-
-            <div className="quiz-result-actions">
-              <button
-                type="button"
-                className="quiz-primary-button"
-                onClick={restartQuiz}
-              >
-                <RotateCcw size={17} />
-                Try Again
-              </button>
-
-              <Link to="/topics" className="quiz-secondary-button">
-                Explore Health Topics
-                <ArrowRight size={17} />
-              </Link>
-            </div>
-
-            <p className="quiz-disclaimer">
-              This quiz is for educational awareness only. It is not
-              a medical assessment or diagnosis.
-            </p>
-          </div>
+          <h1>No quiz questions available</h1>
+          <p>Please add questions to the question bank first.</p>
+          <Link to="/topics" className="quiz-button">
+            Explore health topics
+          </Link>
         </div>
       </section>
     );
   }
 
-  const progress = ((currentQuestion + 1) / quizQuestions.length) * 100;
+  if (finished) {
+    const percentage = Math.round((score / totalQuestions) * 100);
+
+    let resultTitle = "Keep learning!";
+    let resultMessage =
+      "Every attempt is a chance to build your health awareness.";
+
+    if (percentage === 100) {
+      resultTitle = "Perfect score!";
+      resultMessage =
+        "Excellent work! You answered every question correctly.";
+    } else if (percentage >= 70) {
+      resultTitle = "Great job!";
+      resultMessage =
+        "You have a good understanding of these health awareness topics.";
+    } else if (percentage >= 40) {
+      resultTitle = "Good effort!";
+      resultMessage =
+        "You're making progress. Review the health topics and try again.";
+    }
+
+    return (
+      <section className="quiz-page">
+        <div className="quiz-container quiz-result">
+          <div className="quiz-result-icon">
+            <Trophy size={38} />
+          </div>
+
+          <span className="section-eyebrow">Quiz completed</span>
+          <h1>{resultTitle}</h1>
+          <p className="quiz-result-message">{resultMessage}</p>
+
+          <div className="quiz-score-circle">
+            <strong>{percentage}%</strong>
+            <span>Your score</span>
+          </div>
+
+          <div className="quiz-result-stats">
+            <div>
+              <CheckCircle2 size={21} />
+              <strong>{score}</strong>
+              <span>Correct</span>
+            </div>
+            <div>
+              <BookOpen size={21} />
+              <strong>{totalQuestions}</strong>
+              <span>Questions</span>
+            </div>
+            <div>
+              <Sparkles size={21} />
+              <strong>{totalQuestions - score}</strong>
+              <span>To review</span>
+            </div>
+          </div>
+
+          <div className="quiz-result-actions">
+            <button
+              type="button"
+              className="quiz-button"
+              onClick={restartQuiz}
+            >
+              <RotateCcw size={17} />
+              Try a new quiz
+            </button>
+
+            <Link to="/topics" className="quiz-button secondary">
+              Explore topics
+              <ArrowRight size={17} />
+            </Link>
+          </div>
+
+          <p className="quiz-disclaimer">
+            This quiz is for educational purposes only and is not a
+            substitute for professional medical advice.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="quiz-page">
@@ -121,39 +187,60 @@ function Quiz() {
           Back to Home
         </Link>
 
-        <div className="quiz-header">
-          <span className="section-eyebrow">Test Your Knowledge</span>
+        <header className="quiz-header">
+          <span className="section-eyebrow">Test your knowledge</span>
           <h1>Health Awareness Quiz</h1>
           <p>
-            Answer these questions to check your understanding
-            of everyday health and preventive care.
+            Answer 10 randomly selected questions and discover how much
+            you know about everyday health.
           </p>
-        </div>
+        </header>
 
         <div className="quiz-card">
-          <div className="quiz-card-top">
+          <div className="quiz-progress-header">
             <span>
-              Question {currentQuestion + 1} of {quizQuestions.length}
+              Question {currentIndex + 1} of {totalQuestions}
             </span>
-            <span>{Math.round(progress)}% completed</span>
+            <span>{score} correct so far</span>
           </div>
 
-          <div className="quiz-progress-track">
-            <div style={{ width: `${progress}%` }} />
+          <div
+            className="quiz-progress-track"
+            role="progressbar"
+            aria-label="Quiz progress"
+            aria-valuemin={0}
+            aria-valuemax={totalQuestions}
+            aria-valuenow={currentIndex + (answered ? 1 : 0)}
+          >
+            <div
+              className="quiz-progress-fill"
+              style={{ width: `${progress}%` }}
+            />
           </div>
 
-          <h2>{question.question}</h2>
+          <div className="quiz-question-meta">
+            <span className="quiz-topic-badge">
+              {currentQuestion.topic}
+            </span>
+            <span className="quiz-question-number">
+              Question {currentIndex + 1}
+            </span>
+          </div>
+
+          <h2 className="quiz-question">
+            {currentQuestion.question}
+          </h2>
 
           <div className="quiz-options">
-            {question.options.map((option) => {
-              const isSelected = selectedAnswer === option;
-              const isAnswer = question.answer === option;
+            {currentQuestion.options.map((option, index) => {
+              const isSelected = selectedOption === option;
+              const isCorrect = option === currentQuestion.answer;
 
               let optionClass = "quiz-option";
 
-              if (showFeedback && isAnswer) {
+              if (answered && isCorrect) {
                 optionClass += " correct";
-              } else if (showFeedback && isSelected && !isAnswer) {
+              } else if (answered && isSelected && !isCorrect) {
                 optionClass += " incorrect";
               } else if (isSelected) {
                 optionClass += " selected";
@@ -162,64 +249,81 @@ function Quiz() {
               return (
                 <button
                   type="button"
-                  key={option}
+                  key={`${currentQuestion.id}-${option}`}
                   className={optionClass}
                   onClick={() => handleAnswer(option)}
-                  disabled={showFeedback}
+                  disabled={answered}
+                  aria-pressed={isSelected}
                 >
                   <span className="quiz-option-letter">
-                    {String.fromCharCode(
-                      65 + question.options.indexOf(option)
-                    )}
+                    {String.fromCharCode(65 + index)}
                   </span>
+                  <span className="quiz-option-text">{option}</span>
 
-                  <span>{option}</span>
-
-                  {showFeedback && isAnswer && (
-                    <CheckCircle2 size={19} />
+                  {answered && isCorrect && (
+                    <CheckCircle2 className="quiz-option-status" size={20} />
                   )}
 
-                  {showFeedback && isSelected && !isAnswer && (
-                    <XCircle size={19} />
+                  {answered && isSelected && !isCorrect && (
+                    <XCircle className="quiz-option-status" size={20} />
                   )}
                 </button>
               );
             })}
           </div>
 
-          {showFeedback && (
+          {answered && (
             <div
-              className={`quiz-feedback ${isCorrect ? "feedback-correct" : "feedback-incorrect"}`}
+              className={`quiz-feedback ${
+                selectedOption === currentQuestion.answer
+                  ? "success"
+                  : "error"
+              }`}
+              role="status"
+              aria-live="polite"
             >
-              <strong>
-                {isCorrect ? "Correct answer!" : "Not quite. Learn from this:"}
-              </strong>
-              <p>{question.explanation}</p>
+              <div className="quiz-feedback-title">
+                {selectedOption === currentQuestion.answer ? (
+                  <>
+                    <CheckCircle2 size={21} />
+                    Correct answer!
+                  </>
+                ) : (
+                  <>
+                    <XCircle size={21} />
+                    Not quite. Learn from this one!
+                  </>
+                )}
+              </div>
+
+              <p>{currentQuestion.explanation}</p>
             </div>
           )}
 
           <div className="quiz-card-footer">
-            <span className="quiz-score-preview">
-              Correct answers: {score}/{quizQuestions.length}
+            <span className="quiz-footer-hint">
+              {answered
+                ? "Ready for the next question?"
+                : "Choose one answer to continue."}
             </span>
 
             <button
               type="button"
-              className="quiz-primary-button"
+              className="quiz-button"
               onClick={handleNext}
-              disabled={!showFeedback}
+              disabled={!answered}
             >
-              {currentQuestion === quizQuestions.length - 1
-                ? "View Results"
-                : "Next Question"}
+              {currentIndex === totalQuestions - 1
+                ? "See my results"
+                : "Next question"}
               <ArrowRight size={17} />
             </button>
           </div>
         </div>
 
         <p className="quiz-disclaimer">
-          This quiz provides general health education only and does
-          not replace advice from a qualified healthcare professional.
+          Educational quiz only. Health information here does not replace
+          advice from a qualified healthcare professional.
         </p>
       </div>
     </section>
